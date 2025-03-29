@@ -7,6 +7,7 @@
     <title>แจ้งเตือนแผ่นดินไหว - ประเทศไทย</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="style.css" />
+    <link rel="icon" type="image/png" href="logo.png">
     <style>
         .top-bar {
             display: flex;
@@ -112,23 +113,35 @@
             <ul id="distances">กำลังโหลดข้อมูล...</ul>
         </div>
     </div>
-
     <button id="toggle-info">แสดงข้อมูล</button>
     <button id="test-alert">ทดสอบแจ้งเตือน</button>
-
     <div id="audio-popup">
         <p>🔊 เว็บไซต์นี้ต้องการสิทธิ์ในการเล่นเสียง</p>
         <button id="grant-audio">อนุญาตเสียง</button>
     </div>
 
     <div id="credit">
-        สนับสนุนข้อมูลโดย: USGS, OpenStreetMap, Leaflet |
-        จัดทำโดยบริษัท
-        <a href="https://www.surfsight.co" target="_blank" title="เยี่ยมชมเว็บไซต์">Surfsight</a> |
+        สนับสนุนข้อมูลโดย:
+        <a href="https://earthquake.usgs.gov" target="_blank" title="USGS">
+          <img src="https://earthquake.usgs.gov/earthquakes/map/assets/logos/usgs.svg" alt="USGS" style="height: 16px; vertical-align: middle;">
+        </a>
+        <a href="https://www.openstreetmap.org/" target="_blank" title="OpenStreetMap">
+          <img src="https://www.openstreetmap.org/assets/osm_logo-4b074077c29e100f40ee64f5177886e36b570d4cc3ab10c7b263003d09642e3f.svg" alt="OSM" style="height: 16px; vertical-align: middle;">
+        </a>
+        <a href="https://leafletjs.com/" target="_blank" title="Leaflet">
+          <img src="https://leafletjs.com/docs/images/logo.png" alt="Leaflet" style="height: 16px; vertical-align: middle;">
+        </a>
+        |
+        พัฒนาโดย Surfsight
+        <a href="https://www.surfsight.co" target="_blank" title="เยี่ยมชมเว็บไซต์">
+            <img src="logo.png" alt="Surfsight Logo" style="height: 18px; vertical-align: middle;">
+          </a>
         <a href="https://www.facebook.com/SurfsightSolution" target="_blank" title="Facebook Surfsight">
-          <img src="https://cdn-icons-png.flaticon.com/24/733/733547.png" alt="Facebook" style="height: 15px; vertical-align: middle;">
+          <img src="https://cdn-icons-png.flaticon.com/24/733/733547.png" alt="Facebook" style="height: 15px; vertical-align: middle; margin-left: 4px;">
         </a>
       </div>
+      
+      
       
 
 
