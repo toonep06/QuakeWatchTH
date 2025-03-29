@@ -10,8 +10,9 @@ const cities = [
     { name: "ภูเก็ต", lat: 7.8804, lon: 98.3923 },
     { name: "หาดใหญ่", lat: 7.0084, lon: 100.4747 }
 ];
-
-
+if (navigator.userAgent.toLowerCase().includes("mobile")) {
+    alert("⚠️ ไม่สามารถโหลดข้อมูลได้: " + err.message);
+}
 
 const map = L.map('map').setView([15, 100], 5.2);
 
@@ -91,142 +92,153 @@ function haversine(lat1, lon1, lat2, lon2) {
 let color = 'blue';
 // รวม fetchEarthquakes + updateFeedText
 async function fetchEarthquakes() {
-    const url = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson';
-    const res = await fetch(url);
-    const data = await res.json();
-    list.innerHTML = '';
-    markers.forEach(m => map.removeLayer(m));
-    if (heatLayer) map.removeLayer(heatLayer);
-    markers = [];
+    try {
+        const url = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson';
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+        const data = await res.json();
 
-    const now = new Date();
-    const daysBack = 3;
-    const recent = [], heatData = [], chartMap = {};
+        list.innerHTML = '';
+        markers.forEach(m => map.removeLayer(m));
+        if (heatLayer) map.removeLayer(heatLayer);
+        markers = [];
 
-    const filtered = data.features.filter(f => {
-        const time = new Date(f.properties.time);
-        const diff = (now - time) / (1000 * 60 * 60 * 24);
-        const place = f.properties.place.toLowerCase();
-        const isThaiOrMyanmar = place.includes("myanmar") || place.includes("พม่า") || place.includes("thailand") || place.includes("ไทย");
-        return diff <= daysBack && f.properties.mag >= 4.0 && isThaiOrMyanmar;
-    });
+        const now = new Date();
+        const daysBack = 3;
+        const recent = [], heatData = [], chartMap = {};
 
-    if (filtered.length === 0) {
-        list.innerHTML = '<li>ไม่มีแผ่นดินไหวรุนแรงในช่วง 3 วันที่ผ่านมา</li>';
-        updatedDisplay.textContent = 'อัปเดตล่าสุด: -';
-        return;
-    }
+        const filtered = data.features.filter(f => {
+            const time = new Date(f.properties.time);
+            const diff = (now - time) / (1000 * 60 * 60 * 24);
+            const place = f.properties.place.toLowerCase();
+            const isThaiOrMyanmar = place.includes("myanmar") || place.includes("พม่า") || place.includes("thailand") || place.includes("ไทย");
+            return diff <= daysBack && f.properties.mag >= 4.0 && isThaiOrMyanmar;
+        });
 
-    const fetchedAt = new Date().toLocaleString('th-TH');
-    updatedDisplay.textContent = `อัปเดตล่าสุด: ${fetchedAt}`;
-
-    const messages = [];
-    let countMyanmar = 0;
-
-    filtered.forEach(f => {
-        const [lon, lat, depth] = f.geometry.coordinates;
-        const { place, mag } = f.properties;
-        const time = new Date(f.properties.time);
-        const timeStr = time.toLocaleString('th-TH');
-        color = 'blue';
-        if (mag >= 6.0) {
-            color = 'red';
-        } else if (mag >= 5.0) {
-            color = 'orange';
+        if (filtered.length === 0) {
+            list.innerHTML = '<li>ไม่มีแผ่นดินไหวรุนแรงในช่วง 3 วันที่ผ่านมา</li>';
+            updatedDisplay.textContent = 'อัปเดตล่าสุด: -';
+            return;
         }
 
+        const fetchedAt = new Date().toLocaleString('th-TH');
+        updatedDisplay.textContent = `อัปเดตล่าสุด: ${fetchedAt}`;
 
-        const marker = L.circleMarker([lat, lon], {
-            radius: 8,
-            fillColor: color,
-            color: '#fff',
-            weight: 1,
-            opacity: 1,
-            fillOpacity: 0.8
-        }).addTo(map).bindPopup(`<b>📍 ${place}</b><br>ขนาด: ${mag}<br>เวลา: ${timeStr}<br>ความลึก: ${depth} กม.`);
+        const messages = [];
+        let countMyanmar = 0;
 
-        markers.push(marker);
-        heatData.push([lat, lon, mag]);
+        filtered.forEach(f => {
+            const [lon, lat, depth] = f.geometry.coordinates;
+            const { place, mag } = f.properties;
+            const time = new Date(f.properties.time);
+            const timeStr = time.toLocaleString('th-TH');
+            let color = 'blue';
+            if (mag >= 6.0) color = 'red';
+            else if (mag >= 5.0) color = 'orange';
 
-        const isNearCity = cities.some(city => haversine(lat, lon, city.lat, city.lon) <= 1000);
-        const isNearUser = userLocation && haversine(lat, lon, userLocation.lat, userLocation.lon) <= 300;
-
-        const quakeAgeInSeconds = (now - time) / 1000;
-
-        if (mag >= 5.0 && quakeAgeInSeconds <= 120) {
-            const testMarker = L.circleMarker([lat, lon], {
+            const marker = L.circleMarker([lat, lon], {
                 radius: 8,
                 fillColor: color,
                 color: '#fff',
                 weight: 1,
                 opacity: 1,
                 fillOpacity: 0.8
-            }).addTo(map).bindPopup(`<b>📍 จำลองแผ่นดินไหว</b><br>ขนาด: ${mag}<br>เวลา: ${timeStr}<br>ความลึก: ${depth} กม.`).openPopup();
-            map.setView([lat, lon], 6);
-            audio.play();
-            document.getElementById("map").classList.add("shake");
-            setTimeout(() => document.getElementById("map").classList.remove("shake"), 500);
-        }
+            }).addTo(map).bindPopup(`<b>📍 ${place}</b><br>ขนาด: ${mag}<br>เวลา: ${timeStr}<br>ความลึก: ${depth} กม.`);
 
-        const quakeInfo = document.createElement('li');
-        quakeInfo.innerHTML = `<b>📍 ${place}</b><br>ขนาด: ${mag}, เวลา: ${timeStr}<br>📏 ความลึก: ${depth} กม.`;
+            markers.push(marker);
+            heatData.push([lat, lon, mag]);
 
-        const cityDistances = cities.map(city => {
-            const dist = haversine(lat, lon, city.lat, city.lon).toFixed(1);
-            return `${city.name} (${dist} กม.)`;
+            const quakeAgeInSeconds = (now - time) / 1000;
+
+            if (mag >= 5.0 && quakeAgeInSeconds <= 120) {
+                const testMarker = L.circleMarker([lat, lon], {
+                    radius: 8,
+                    fillColor: color,
+                    color: '#fff',
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map).bindPopup(`<b>📍 จำลองแผ่นดินไหว</b><br>ขนาด: ${mag}<br>เวลา: ${timeStr}<br>ความลึก: ${depth} กม.`).openPopup();
+
+                map.setView([lat, lon], 6);
+
+                // ✅ ปรับให้ audio.play() ทำงานเมื่อ user เคยคลิกเท่านั้น
+                if (userInteracted) {
+                    audio.play().catch(err => {
+                        console.warn('เสียงถูกบล็อกโดย browser:', err);
+                    });
+                }
+
+                document.getElementById("map").classList.add("shake");
+                setTimeout(() => document.getElementById("map").classList.remove("shake"), 500);
+            }
+
+            const quakeInfo = document.createElement('li');
+            quakeInfo.innerHTML = `<b>📍 ${place}</b><br>ขนาด: ${mag}, เวลา: ${timeStr}<br>📏 ความลึก: ${depth} กม.`;
+
+            const cityDistances = cities.map(city => {
+                const dist = haversine(lat, lon, city.lat, city.lon).toFixed(1);
+                return `${city.name} (${dist} กม.)`;
+            });
+            if (userLocation) {
+                const userDist = haversine(lat, lon, userLocation.lat, userLocation.lon).toFixed(1);
+                cityDistances.unshift(`คุณ (${userDist} กม.)`);
+            }
+
+            quakeInfo.innerHTML += `<br>🛫 ระยะจากเมืองหลัก: ${cityDistances.join(' | ')}`;
+            list.appendChild(quakeInfo);
+
+            const dayKey = time.toISOString().slice(0, 10);
+            chartMap[dayKey] = (chartMap[dayKey] || 0) + 1;
+
+            messages.push(`📢 ขนาด ${mag} - ${place} (${timeStr})`);
+            if (place.toLowerCase().includes("myanmar") || place.toLowerCase().includes("พม่า")) {
+                countMyanmar++;
+            }
         });
-        if (userLocation) {
-            const userDist = haversine(lat, lon, userLocation.lat, userLocation.lon).toFixed(1);
-            cityDistances.unshift(`คุณ (${userDist} กม.)`);
+
+        heatLayer = L.heatLayer(heatData, { radius: 25, blur: 15 }).addTo(map);
+
+        if (filtered.length > 1) {
+            const sortedFeatures = filtered.sort((a, b) => a.properties.time - b.properties.time);
+            const sortedCoords = sortedFeatures.map(f => [f.geometry.coordinates[1], f.geometry.coordinates[0]]);
+
+            L.polyline(sortedCoords, {
+                color: "#ff7800",
+                weight: 2,
+                dashArray: '5, 5'
+            }).addTo(map);
+
+            const latestFeature = sortedFeatures[sortedFeatures.length - 1];
+            const [lon, lat] = latestFeature.geometry.coordinates;
+            const blinkingCircle = L.circleMarker([lat, lon], {
+                radius: 10,
+                fillColor: "red",
+                color: '#fff',
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 1,
+                className: 'blinking-marker'
+            }).addTo(map).bringToBack();
         }
 
-        quakeInfo.innerHTML += `<br>🛫 ระยะจากเมืองหลัก: ${cityDistances.join(' | ')}`;
-        list.appendChild(quakeInfo);
+        document.getElementById("quake-stats").innerHTML = ` | <img src="https://flagcdn.com/w20/mm.png" alt="Myanmar Flag" style="vertical-align: middle; height: 14px;"> แผ่นดินไหวในพม่า ${countMyanmar} ครั้ง`;
 
-        const dayKey = time.toISOString().slice(0, 10);
-        chartMap[dayKey] = (chartMap[dayKey] || 0) + 1;
+        const feedElem = document.getElementById('quake-feed-text');
+        const latest = messages.sort((a, b) => {
+            const aTime = new Date(a.match(/\((.*?)\)/)[1]);
+            const bTime = new Date(b.match(/\((.*?)\)/)[1]);
+            return bTime - aTime;
+        })[0];
+        feedElem.textContent = latest;
 
-        messages.push(`📢 ขนาด ${mag} - ${place} (${timeStr})`);
-        if (place.toLowerCase().includes("myanmar") || place.toLowerCase().includes("พม่า")) {
-            countMyanmar++;
-        }
-    });
-
-    heatLayer = L.heatLayer(heatData, { radius: 25, blur: 15 }).addTo(map);
-    if (filtered.length > 1) {
-        const sortedFeatures = filtered.sort((a, b) => a.properties.time - b.properties.time);
-        const sortedCoords = sortedFeatures.map(f => [f.geometry.coordinates[1], f.geometry.coordinates[0]]);
-
-        L.polyline(sortedCoords, {
-            color: "#ff7800",
-            weight: 2,
-            dashArray: '5, 5'
-        }).addTo(map);
-
-        // จุดล่าสุดกระพริบ
-        const latestFeature = sortedFeatures[sortedFeatures.length - 1];
-        const [lon, lat] = latestFeature.geometry.coordinates;
-        const blinkingCircle = L.circleMarker([lat, lon], {
-            radius: 10,
-            fillColor: "red",
-            color: '#fff',
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 1,
-            className: 'blinking-marker'
-        }).addTo(map).bringToBack();
+    } catch (err) {
+        console.error("เกิดข้อผิดพลาดในการดึงข้อมูลแผ่นดินไหว:", err);
+        list.innerHTML = '<li style="color:red;">❌ ไม่สามารถโหลดข้อมูลแผ่นดินไหวได้</li>';
+        updatedDisplay.textContent = 'อัปเดตล่าสุด: -';
     }
-    document.getElementById("quake-stats").innerHTML = ` | <img src="https://flagcdn.com/w20/mm.png" alt="Myanmar Flag" style="vertical-align: middle; height: 14px;"> แผ่นดินไหวในพม่า ${countMyanmar} ครั้ง`;
-
-    const feedElem = document.getElementById('quake-feed-text');
-    const latest = messages.sort((a, b) => {
-        const aTime = new Date(a.match(/\((.*?)\)/)[1]);
-        const bTime = new Date(b.match(/\((.*?)\)/)[1]);
-        return bTime - aTime;
-    })[0];
-    feedElem.textContent = latest;
-
 }
+
 // 📌 Leaflet Legend ด้านขวาบน
 const legend = L.control({ position: 'topright' });
 legend.onAdd = function () {
@@ -247,9 +259,6 @@ legend.onAdd = function () {
 
 legend.addTo(map);
 
-if (Notification.permission !== 'granted') {
-    Notification.requestPermission();
-}
 // สไตล์จุดกระพริบล่าสุด
 const style = document.createElement('style');
 style.innerHTML = `
