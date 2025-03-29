@@ -140,7 +140,7 @@ async function fetchEarthquakes() {
         const { place, mag } = f.properties;
         const time = new Date(f.properties.time);
         const timeStr = time.toLocaleString('th-TH');
-        const color = mag >= 6.0 ? 'red' : 'blue';
+        const color = mag >= 5.0 ? 'red' : 'blue';
 
         const marker = L.circleMarker([lat, lon], {
             radius: 8,
@@ -195,30 +195,19 @@ async function fetchEarthquakes() {
 
     heatLayer = L.heatLayer(heatData, { radius: 25, blur: 15 }).addTo(map);
 
-    // แสดงกราฟ
-    const labels = Object.keys(chartMap);
-    const values = Object.values(chartMap);
-    if (quakeChart) quakeChart.destroy();
-  
-
     document.getElementById("quake-stats").innerHTML = ` | <img src="https://flagcdn.com/w20/mm.png" alt="Myanmar Flag" style="vertical-align: middle; height: 14px;"> แผ่นดินไหวในพม่า ${countMyanmar} ครั้ง`;
 
-    let index = 0;
     const feedElem = document.getElementById('quake-feed-text');
-    function rotateFeed() {
-        feedElem.style.opacity = 0;
-        setTimeout(() => {
-            feedElem.textContent = messages[index];
-            feedElem.style.opacity = 1;
-            index = (index + 1) % messages.length;
-        }, 300);
-    }
-    rotateFeed();
-    setInterval(rotateFeed, 4000);
+    const latest = messages.sort((a, b) => {
+        const aTime = new Date(a.match(/\((.*?)\)/)[1]);
+        const bTime = new Date(b.match(/\((.*?)\)/)[1]);
+        return bTime - aTime;
+    })[0];
+    feedElem.textContent = latest;
 }
 
 fetchEarthquakes();
-setInterval(fetchEarthquakes, 60000);
+setInterval(fetchEarthquakes, 6000);
 
 
 if (Notification.permission !== 'granted') {
