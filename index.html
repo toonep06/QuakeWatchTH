@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>แจ้งเตือนแผ่นดินไหว - ประเทศไทย</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="style.css" />
+    <style>
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #111;
+            padding: 10px;
+            z-index: 1000;
+            flex-wrap: wrap;
+        }
+
+        #logo img {
+            height: 36px;
+        }
+
+        #quake-feed {
+            color: #f1c40f;
+            padding-left: 12px;
+            white-space: nowrap;
+            font-size: 0.85rem;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        #quake-feed-text {
+            display: inline-block;
+            transition: opacity 0.5s ease;
+        }
+
+        #quake-stats {
+            color: #7FDBFF;
+            font-size: 0.85rem;
+            margin-left: 12px;
+            white-space: nowrap;
+        }
+
+        #last-updated {
+            font-size: 0.75rem;
+            color: #ccc;
+            margin-left: auto;
+            padding-left: 12px;
+        }
+
+        #test-alert {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 999;
+            color: #fff;
+            background-color: #f39c12;
+        }
+
+        #test-alert.active {
+            background-color: #c0392b;
+        }
+
+        #audio-popup {
+            position: fixed;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #222;
+            color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            text-align: center;
+        }
+
+        #audio-popup button {
+            margin-top: 10px;
+            background: #00c853;
+            border: none;
+            color: #fff;
+            padding: 8px 14px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="top-bar">
+        <div id="logo"><img src="logo.png" alt="โลโก้"></div>
+        <div id="quake-feed">
+            <span id="quake-feed-text">📢 กำลังโหลดข้อมูลแผ่นดินไหว...</span>
+            <span id="quake-stats"></span>
+        </div>
+        <div id="last-updated">อัปเดตล่าสุด: -</div>
+    </div>
+
+    <div class="container">
+        <div id="map"></div>
+        <div id="info" class="hidden">
+            <h2>🌏 แผ่นดินไหวย้อนหลัง 3 วัน</h2>
+            <ul id="distances">กำลังโหลดข้อมูล...</ul>
+        </div>
+    </div>
+
+    <button id="toggle-info">แสดงข้อมูล</button>
+    <button id="test-alert">ทดสอบแจ้งเตือน</button>
+
+    <div id="audio-popup">
+        <p>🔊 เว็บไซต์นี้ต้องการสิทธิ์ในการเล่นเสียง</p>
+        <button id="grant-audio">อนุญาตเสียง</button>
+    </div>
+
+    <div id="credit"> สนับสนุนข้อมูลโดย: USGS, OpenStreetMap, Leaflet จัดทำโดยบริษัท Surfsight</div>
+
+    <audio id="alert-sound">
+        <source src="alarm-sound-effect.mp3" type="audio/mpeg">
+    </audio>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+    <script>
+        const grantBtn = document.getElementById("grant-audio");
+        const alertAudio = document.getElementById("alert-sound");
+        const audioPopup = document.getElementById("audio-popup");
+
+        grantBtn.addEventListener("click", () => {
+            alertAudio.load(); alertAudio.play().then(() => {
+                console.log("✅ ได้รับสิทธิ์เล่นเสียงแล้ว");
+                audioPopup.style.display = "none";
+            }).catch(err => {
+                console.warn("❌ ไม่สามารถเล่นเสียงได้:", err);
+                alert("กรุณาคลิกที่หน้าเว็บก่อน แล้วลองอีกครั้ง");
+            });
+        });
+
+
+        function updateFeedText(data) {
+            const messages = data.features.map(f => {
+                const place = f.properties.place;
+                const mag = f.properties.mag.toFixed(1);
+                const time = new Date(f.properties.time).toLocaleString('th-TH');
+                return `📢 ขนาด ${mag} - ${place} (${time})`;
+            });
+
+            const countMyanmar = data.features.filter(f => f.properties.place.toLowerCase().includes("myanmar") || f.properties.place.toLowerCase().includes("พม่า")).length;
+            document.getElementById("quake-stats").innerHTML = `
+  | <img src="https://flagcdn.com/w20/mm.png" alt="Myanmar Flag" style="vertical-align: middle; height: 14px;"> 
+  แผ่นดินไหวในพม่า ${countMyanmar} ครั้ง
+`;
+
+
+            let index = 0;
+            const feedElem = document.getElementById('quake-feed-text');
+            function rotateFeed() {
+                feedElem.style.opacity = 0;
+                setTimeout(() => {
+                    feedElem.textContent = messages[index];
+                    feedElem.style.opacity = 1;
+                    index = (index + 1) % messages.length;
+                }, 300);
+            }
+            rotateFeed();
+            setInterval(rotateFeed, 4000);
+        }
+
+        fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson')
+            .then(res => res.json())
+            .then(data => updateFeedText(data));
+    </script>
+    <script src="script.js"></script>
+</body>
+
+</html>
