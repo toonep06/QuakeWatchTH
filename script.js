@@ -17,7 +17,7 @@ document.body.addEventListener('click', () => {
 });
 
 
-const map = L.map('map').setView([15, 100], 5);
+const map = L.map('map').setView([15, 100], 5.2);
 
 L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap (France)'
@@ -140,7 +140,13 @@ async function fetchEarthquakes() {
         const { place, mag } = f.properties;
         const time = new Date(f.properties.time);
         const timeStr = time.toLocaleString('th-TH');
-        const color = mag >= 5.0 ? 'red' : 'blue';
+        let color = 'blue';
+        if (mag >= 6.0) {
+            color = 'red';
+        } else if (mag >= 5.0) {
+            color = 'orange';
+        }
+        
 
         const marker = L.circleMarker([lat, lon], {
             radius: 8,
@@ -160,14 +166,19 @@ async function fetchEarthquakes() {
         const quakeAgeInSeconds = (now - time) / 1000;
 
         if (mag >= 5.0 && quakeAgeInSeconds <= 120) {
-            if (Notification.permission === 'granted') {
-                new Notification(`📢 แผ่นดินไหว ${mag} ใกล้คุณ!`);
-            }
+            const testMarker = L.circleMarker([lat, lon], {
+                radius: 8,
+                fillColor: 'red',
+                color: '#fff',
+                weight: 1,
+                opacity: 1,
+                fillOpacity: 0.8
+            }).addTo(map).bindPopup(`<b>📍 จำลองแผ่นดินไหว</b><br>ขนาด: ${mag}<br>เวลา: ${timeStr}<br>ความลึก: ${depth} กม.`).openPopup();
+            map.setView([lat, lon], 6);
             audio.play();
             document.getElementById("map").classList.add("shake");
-            console.log("เสียงทำงาน");
             setTimeout(() => document.getElementById("map").classList.remove("shake"), 500);
-        }
+        } 
 
         const quakeInfo = document.createElement('li');
         quakeInfo.innerHTML = `<b>📍 ${place}</b><br>ขนาด: ${mag}, เวลา: ${timeStr}<br>📏 ความลึก: ${depth} กม.`;
@@ -204,12 +215,29 @@ async function fetchEarthquakes() {
         return bTime - aTime;
     })[0];
     feedElem.textContent = latest;
+    
 }
-
+    // 📌 Leaflet Legend ด้านขวาบน
+    const legend = L.control({ position: 'topright' });
+    legend.onAdd = function () {
+        const div = L.DomUtil.create('div', 'info legend');
+        div.style.background = 'white';
+        div.style.padding = '6px 10px';
+        div.style.borderRadius = '6px';
+        div.style.boxShadow = '0 0 6px rgba(0,0,0,0.2)';
+        div.innerHTML = `
+            <b style="color: black;">ระดับความรุนแรง</b><br>
+            <i style="background:red;width:12px;height:12px;display:inline-block;border-radius:50%;margin-right:6px;"></i> <span style="color: black;">≥ 6.0</span><br>
+            <i style="background:orange;width:12px;height:12px;display:inline-block;border-radius:50%;margin-right:6px;"></i> <span style="color: black;">5.0 - 5.9</span><br>
+            <i style="background:blue;width:12px;height:12px;display:inline-block;border-radius:50%;margin-right:6px;"></i> <span style="color: black;">&lt; 5.0</span>
+        `;
+        return div;
+    };
+    legend.addTo(map);
 
 if (Notification.permission !== 'granted') {
     Notification.requestPermission();
 }
 
 fetchEarthquakes();
-setInterval(fetchEarthquakes, 6000);
+setInterval(fetchEarthquakes, 10000);
