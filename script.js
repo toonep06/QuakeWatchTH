@@ -206,13 +206,10 @@ async function fetchEarthquakes() {
     feedElem.textContent = latest;
 }
 
-fetchEarthquakes();
-setInterval(fetchEarthquakes, 6000);
-
 
 if (Notification.permission !== 'granted') {
     Notification.requestPermission();
 }
 
 fetchEarthquakes();
-setInterval(fetchEarthquakes, 60000);
+setInterval(fetchEarthquakes, 6000);
