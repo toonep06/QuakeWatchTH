@@ -39,14 +39,7 @@ fetch('https://raw.githubusercontent.com/datasets/geo-countries/master/data/coun
         }
     });
 
-// อ่าน GPS ผู้ใช้
-if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(pos => {
-        const { latitude, longitude } = pos.coords;
-        userLocation = { lat: latitude, lon: longitude };
-        L.marker([latitude, longitude]).addTo(map).bindPopup("📍 ตำแหน่งของคุณ").openPopup();
-    });
-}
+
 
 const list = document.getElementById('distances');
 const updatedDisplay = document.getElementById('last-updated');
