@@ -39,7 +39,14 @@ fetch('https://raw.githubusercontent.com/datasets/geo-countries/master/data/coun
         }
     });
 
-
+// อ่าน GPS ผู้ใช้
+if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+        const { latitude, longitude } = pos.coords;
+        userLocation = { lat: latitude, lon: longitude };
+        L.marker([latitude, longitude]).addTo(map).bindPopup("📍 ตำแหน่งของคุณ").openPopup();
+    });
+}
 
 const list = document.getElementById('distances');
 const updatedDisplay = document.getElementById('last-updated');
@@ -94,6 +101,7 @@ function haversine(lat1, lon1, lat2, lon2) {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// รวม fetchEarthquakes + updateFeedText
 async function fetchEarthquakes() {
     const url = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson';
     const res = await fetch(url);
@@ -115,7 +123,6 @@ async function fetchEarthquakes() {
         return diff <= daysBack && f.properties.mag >= 4.0 && isThaiOrMyanmar;
     });
 
-
     if (filtered.length === 0) {
         list.innerHTML = '<li>ไม่มีแผ่นดินไหวรุนแรงในช่วง 3 วันที่ผ่านมา</li>';
         updatedDisplay.textContent = 'อัปเดตล่าสุด: -';
@@ -125,6 +132,8 @@ async function fetchEarthquakes() {
     const fetchedAt = new Date().toLocaleString('th-TH');
     updatedDisplay.textContent = `อัปเดตล่าสุด: ${fetchedAt}`;
 
+    const messages = [];
+    let countMyanmar = 0;
 
     filtered.forEach(f => {
         const [lon, lat, depth] = f.geometry.coordinates;
@@ -160,7 +169,6 @@ async function fetchEarthquakes() {
             setTimeout(() => document.getElementById("map").classList.remove("shake"), 500);
         }
 
-
         const quakeInfo = document.createElement('li');
         quakeInfo.innerHTML = `<b>📍 ${place}</b><br>ขนาด: ${mag}, เวลา: ${timeStr}<br>📏 ความลึก: ${depth} กม.`;
 
@@ -178,11 +186,40 @@ async function fetchEarthquakes() {
 
         const dayKey = time.toISOString().slice(0, 10);
         chartMap[dayKey] = (chartMap[dayKey] || 0) + 1;
+
+        messages.push(`📢 ขนาด ${mag} - ${place} (${timeStr})`);
+        if (place.toLowerCase().includes("myanmar") || place.toLowerCase().includes("พม่า")) {
+            countMyanmar++;
+        }
     });
 
     heatLayer = L.heatLayer(heatData, { radius: 25, blur: 15 }).addTo(map);
 
+    // แสดงกราฟ
+    const labels = Object.keys(chartMap);
+    const values = Object.values(chartMap);
+    if (quakeChart) quakeChart.destroy();
+  
+
+    document.getElementById("quake-stats").innerHTML = ` | <img src="https://flagcdn.com/w20/mm.png" alt="Myanmar Flag" style="vertical-align: middle; height: 14px;"> แผ่นดินไหวในพม่า ${countMyanmar} ครั้ง`;
+
+    let index = 0;
+    const feedElem = document.getElementById('quake-feed-text');
+    function rotateFeed() {
+        feedElem.style.opacity = 0;
+        setTimeout(() => {
+            feedElem.textContent = messages[index];
+            feedElem.style.opacity = 1;
+            index = (index + 1) % messages.length;
+        }, 300);
+    }
+    rotateFeed();
+    setInterval(rotateFeed, 4000);
 }
+
+fetchEarthquakes();
+setInterval(fetchEarthquakes, 60000);
+
 
 if (Notification.permission !== 'granted') {
     Notification.requestPermission();
