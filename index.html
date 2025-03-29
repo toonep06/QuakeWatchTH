@@ -145,38 +145,6 @@
         });
 
 
-        function updateFeedText(data) {
-            const messages = data.features.map(f => {
-                const place = f.properties.place;
-                const mag = f.properties.mag.toFixed(1);
-                const time = new Date(f.properties.time).toLocaleString('th-TH');
-                return `📢 ขนาด ${mag} - ${place} (${time})`;
-            });
-
-            const countMyanmar = data.features.filter(f => f.properties.place.toLowerCase().includes("myanmar") || f.properties.place.toLowerCase().includes("พม่า")).length;
-            document.getElementById("quake-stats").innerHTML = `
-  | <img src="https://flagcdn.com/w20/mm.png" alt="Myanmar Flag" style="vertical-align: middle; height: 14px;"> 
-  แผ่นดินไหวในพม่า ${countMyanmar} ครั้ง
-`;
-
-
-            let index = 0;
-            const feedElem = document.getElementById('quake-feed-text');
-            function rotateFeed() {
-                feedElem.style.opacity = 0;
-                setTimeout(() => {
-                    feedElem.textContent = messages[index];
-                    feedElem.style.opacity = 1;
-                    index = (index + 1) % messages.length;
-                }, 300);
-            }
-            rotateFeed();
-            setInterval(rotateFeed, 4000);
-        }
-
-        fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson')
-            .then(res => res.json())
-            .then(data => updateFeedText(data));
     </script>
     <script src="script.js"></script>
 </body>
