@@ -33,7 +33,7 @@ fetch('https://raw.githubusercontent.com/datasets/geo-countries/master/data/coun
                 style: {
                     color: "#00FFAA",
                     weight: 2,
-                    fillOpacity: 0.05
+                    fillOpacity: 0.2
                 }
             }).addTo(map);
         }
@@ -100,7 +100,7 @@ function haversine(lat1, lon1, lat2, lon2) {
     const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
-
+let color = 'blue';
 // รวม fetchEarthquakes + updateFeedText
 async function fetchEarthquakes() {
     const url = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson';
@@ -140,13 +140,13 @@ async function fetchEarthquakes() {
         const { place, mag } = f.properties;
         const time = new Date(f.properties.time);
         const timeStr = time.toLocaleString('th-TH');
-        let color = 'blue';
+        color = 'blue';
         if (mag >= 6.0) {
             color = 'red';
         } else if (mag >= 5.0) {
             color = 'orange';
         }
-        
+
 
         const marker = L.circleMarker([lat, lon], {
             radius: 8,
@@ -168,7 +168,7 @@ async function fetchEarthquakes() {
         if (mag >= 5.0 && quakeAgeInSeconds <= 120) {
             const testMarker = L.circleMarker([lat, lon], {
                 radius: 8,
-                fillColor: 'red',
+                fillColor: color,
                 color: '#fff',
                 weight: 1,
                 opacity: 1,
@@ -178,7 +178,7 @@ async function fetchEarthquakes() {
             audio.play();
             document.getElementById("map").classList.add("shake");
             setTimeout(() => document.getElementById("map").classList.remove("shake"), 500);
-        } 
+        }
 
         const quakeInfo = document.createElement('li');
         quakeInfo.innerHTML = `<b>📍 ${place}</b><br>ขนาด: ${mag}, เวลา: ${timeStr}<br>📏 ความลึก: ${depth} กม.`;
@@ -205,7 +205,29 @@ async function fetchEarthquakes() {
     });
 
     heatLayer = L.heatLayer(heatData, { radius: 25, blur: 15 }).addTo(map);
+    if (filtered.length > 1) {
+        const sortedFeatures = filtered.sort((a, b) => a.properties.time - b.properties.time);
+        const sortedCoords = sortedFeatures.map(f => [f.geometry.coordinates[1], f.geometry.coordinates[0]]);
 
+        L.polyline(sortedCoords, {
+            color: "#ff7800",
+            weight: 2,
+            dashArray: '5, 5'
+        }).addTo(map);
+
+        // จุดล่าสุดกระพริบ
+        const latestFeature = sortedFeatures[sortedFeatures.length - 1];
+        const [lon, lat] = latestFeature.geometry.coordinates;
+        const blinkingCircle = L.circleMarker([lat, lon], {
+            radius: 10,
+            fillColor: "red",
+            color: '#fff',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 1,
+            className: 'blinking-marker'
+        }).addTo(map).bringToBack();
+    }
     document.getElementById("quake-stats").innerHTML = ` | <img src="https://flagcdn.com/w20/mm.png" alt="Myanmar Flag" style="vertical-align: middle; height: 14px;"> แผ่นดินไหวในพม่า ${countMyanmar} ครั้ง`;
 
     const feedElem = document.getElementById('quake-feed-text');
@@ -215,29 +237,41 @@ async function fetchEarthquakes() {
         return bTime - aTime;
     })[0];
     feedElem.textContent = latest;
-    
+
 }
-    // 📌 Leaflet Legend ด้านขวาบน
-    const legend = L.control({ position: 'topright' });
-    legend.onAdd = function () {
-        const div = L.DomUtil.create('div', 'info legend');
-        div.style.background = 'white';
-        div.style.padding = '6px 10px';
-        div.style.borderRadius = '6px';
-        div.style.boxShadow = '0 0 6px rgba(0,0,0,0.2)';
-        div.innerHTML = `
-            <b style="color: black;">ระดับความรุนแรง</b><br>
-            <i style="background:red;width:12px;height:12px;display:inline-block;border-radius:50%;margin-right:6px;"></i> <span style="color: black;">≥ 6.0</span><br>
-            <i style="background:orange;width:12px;height:12px;display:inline-block;border-radius:50%;margin-right:6px;"></i> <span style="color: black;">5.0 - 5.9</span><br>
-            <i style="background:blue;width:12px;height:12px;display:inline-block;border-radius:50%;margin-right:6px;"></i> <span style="color: black;">&lt; 5.0</span>
-        `;
-        return div;
-    };
-    legend.addTo(map);
+// 📌 Leaflet Legend ด้านขวาบน
+const legend = L.control({ position: 'topright' });
+legend.onAdd = function () {
+    const div = L.DomUtil.create('div', 'info legend');
+    div.style.background = 'white';
+    div.style.padding = '6px 10px';
+    div.style.borderRadius = '6px';
+    div.style.boxShadow = '0 0 6px rgba(0,0,0,0.2)';
+    div.innerHTML = `
+        <b style="color: black;">ระดับความรุนแรง</b><br>
+        <i style="background:red;width:12px;height:12px;display:inline-block;border-radius:50%;margin-right:6px;"></i> <span style="color: black;">≥ 6.0</span><br>
+        <i style="background:orange;width:12px;height:12px;display:inline-block;border-radius:50%;margin-right:6px;"></i> <span style="color: black;">5.0 - 5.9</span><br>
+        <i style="background:blue;width:12px;height:12px;display:inline-block;border-radius:50%;margin-right:6px;"></i> <span style="color: black;">&lt; 5.0</span><br>
+        <i style="background:orange;width:14px;height:14px;display:inline-block;border-radius:50%;margin-right:6px;border:2px solid white; animation: blink 1s infinite;"></i> <span style="color: black;">จุดล่าสุด</span>
+    `;
+    return div;
+};
+
+legend.addTo(map);
 
 if (Notification.permission !== 'granted') {
     Notification.requestPermission();
 }
-
+// สไตล์จุดกระพริบล่าสุด
+const style = document.createElement('style');
+style.innerHTML = `
+.blinking-marker {
+  animation: blink 1s infinite;
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}`;
+document.head.appendChild(style);
 fetchEarthquakes();
 setInterval(fetchEarthquakes, 10000);
