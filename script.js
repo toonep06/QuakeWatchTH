@@ -10,11 +10,7 @@ const cities = [
     { name: "ภูเก็ต", lat: 7.8804, lon: 98.3923 },
     { name: "หาดใหญ่", lat: 7.0084, lon: 100.4747 }
 ];
-let userInteracted = false;
 
-document.body.addEventListener('click', () => {
-    userInteracted = true;
-});
 
 
 const map = L.map('map').setView([15, 100], 5.2);
